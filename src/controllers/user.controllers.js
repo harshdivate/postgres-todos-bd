@@ -41,8 +41,6 @@ const registerUser = asyncHandler(async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    console.log(req.body);
-
     if ([username, email, password].some((val) => val?.trim() === "")) {
       return res
         .status(400)
@@ -50,6 +48,11 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     const client = await connectDB();
+    if (!client) {
+      res
+        .status(500)
+        .json({ status: false, messgae: "Issue in connecting to database" });
+    }
     const userExist = await client.query(
       `select * from users where email='${email}' or username='${username}'`
     );
@@ -75,25 +78,16 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log(hashedPassword);
 
-    // Generate refreshToken and AccessToken
-    const { accessToken, refreshToken } = generateRefreshAccessToken(
-      username,
-      email,
-      password
-    );
-    const query = `INSERT INTO users (username, email, password, image, accessToken, refreshToken)
+    const query = `INSERT INTO users (username, email, password, image)
       VALUES
-      ($1,$2,$3,$4,$5,$6) RETURNING username,email,image,accessToken,refreshToken;`;
+      ($1,$2,$3,$4) RETURNING username,email,image;`;
 
     const registerUser = await client.query(query, [
       username,
       email,
       hashedPassword,
       avatar.url,
-      accessToken,
-      refreshToken,
     ]);
 
     return res
@@ -101,8 +95,87 @@ const registerUser = asyncHandler(async (req, res) => {
       .json({ status: true, message: registerUser.rows[0] });
   } catch (error) {
     console.log(error?.message);
-    // client.release();
+    client.release();
   }
 });
 
-export { registerUser };
+const loginUser = asyncHandler(async (req, res) => {
+  // To-do Login user
+  // take email and password
+  // check if both are not null
+  // check if password matches the hashedPassword
+  //
+  try {
+    const client = await connectDB();
+    if (!client) {
+      res
+        .status(500)
+        .json({ status: false, messgae: "Issue in connecting to database" });
+    }
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Email or password undefined" });
+    }
+
+    // Check is password matches the hasedPassword
+    const query = `SELECT username,email,password from users where email='${email}'`;
+
+    const result = await client.query(query);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ status: false, message: "user not found" });
+    }
+
+    const rows = result.rows?.[0];
+
+    // userexist the match the hashed password
+    const isPasswordCorrect = await bcrypt.compare(password, rows.password);
+
+    if (!isPasswordCorrect) {
+      res.status(403).status({ status: false, message: "Password Incorrect" });
+    }
+
+    const { accessToken, refreshToken } = generateRefreshAccessToken(
+      rows.username,
+      rows.email,
+      password
+    );
+
+    const updateQuery = `Update users set accessToken='${accessToken}',refreshToken='${refreshToken}' where email='${email}' RETURNING username,email,accessToken,refreshToken `;
+    const updateResult = await client.query(updateQuery);
+
+    if (updateResult.rows.length === 0) {
+      res.status(500).json({ status: false, message: "Internal server Error" });
+    }
+
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json({
+        status: true,
+        message: "user logged in successfully",
+        data: updateResult.rows,
+      });
+  } catch (error) {
+    console.log(error);
+    client.release();
+  }
+});
+
+export { registerUser, loginUser };
+
+// rows: [
+//   {
+//     username: 'harsh',
+//     email: 'harsh@gmail.com',
+//     password: '$2b$10$6QxKF/QmfZB6xu/i7OxrCeyxwcdLKdTCyuW6rdAzat.D6ygR.6f7O'
+//   }
+// ],

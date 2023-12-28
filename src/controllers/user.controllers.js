@@ -152,8 +152,12 @@ const loginUser = asyncHandler(async (req, res) => {
     }
 
     const options = {
+      // domain: "http://locahost:5173",
       httpOnly: true,
       secure: true,
+      sameSite: "None",
+      // path: "http://localhost:5173/",
+      expires: new Date(Date.now() + 100 * 1000),
     };
     return res
       .status(200)

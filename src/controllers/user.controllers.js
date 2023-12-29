@@ -174,7 +174,11 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser };
+const getDetails = asyncHandler(async (req, res) => {
+  console.log(req.user);
+  res.status(200).json({ success: true, message: "details" });
+});
+export { registerUser, loginUser, getDetails };
 
 // rows: [
 //   {

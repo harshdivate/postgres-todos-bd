@@ -5,6 +5,12 @@ import { uploadFiletoCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 
 const generateRefreshAccessToken = (username, email, password) => {
+  const accessTokenExpiry =
+    Math.floor(Date.now() / 1000) +
+    process.env.ACCESS_TOkEN_EXPIRY_DATE * 60 * 60;
+  const refreshTokenExpiry =
+    Math.floor(Date.now() / 1000) +
+    process.env.REFRESH_TOKEN_EXPIRY_DATE * 60 * 60;
   const accessToken = jwt.sign(
     {
       username,
@@ -13,7 +19,7 @@ const generateRefreshAccessToken = (username, email, password) => {
     },
     process.env.ACCESS_TOkEN_SECRET,
     {
-      expiresIn: process.env.ACCESS_TOkEN_EXPIRY_DATE,
+      expiresIn: accessTokenExpiry,
     }
   );
 
@@ -21,12 +27,12 @@ const generateRefreshAccessToken = (username, email, password) => {
     {
       email,
     },
-    process.env.ACCESS_TOkEN_SECRET,
+    process.env.REFRESH_TOKEN_SECRET,
     {
-      expiresIn: process.env.ACCESS_TOkEN_EXPIRY_DATE,
+      expiresIn: refreshTokenExpiry,
     }
   );
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, accessTokenExpiry };
 };
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -137,14 +143,10 @@ const loginUser = asyncHandler(async (req, res) => {
     if (!isPasswordCorrect) {
       res.status(403).status({ status: false, message: "Password Incorrect" });
     }
+    const { accessToken, refreshToken, accessTokenExpiry } =
+      generateRefreshAccessToken(rows.username, rows.email, password);
 
-    const { accessToken, refreshToken } = generateRefreshAccessToken(
-      rows.username,
-      rows.email,
-      password
-    );
-
-    const updateQuery = `Update users set accessToken='${accessToken}',refreshToken='${refreshToken}' where email='${email}' RETURNING username,email,accessToken,refreshToken `;
+    const updateQuery = `Update users set accessToken='${accessToken}',refreshToken='${refreshToken}' where email='${email}' RETURNING username,email,accessToken `;
     const updateResult = await client.query(updateQuery);
 
     if (updateResult.rows.length === 0) {
@@ -153,21 +155,17 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const options = {
       // domain: "http://locahost:5173",
-      httpOnly: true,
+      httpOnly: false,
       secure: true,
       sameSite: "None",
       // path: "http://localhost:5173/",
-      expires: new Date(Date.now() + 100 * 1000),
+      expires: new Date(accessTokenExpiry * 1000),
     };
-    return res
-      .status(200)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", refreshToken, options)
-      .json({
-        status: true,
-        message: "user logged in successfully",
-        data: updateResult.rows,
-      });
+    return res.status(200).cookie("accessToken", accessToken, options).json({
+      status: true,
+      message: "user logged in successfully",
+      data: updateResult.rows,
+    });
   } catch (error) {
     console.log(error);
     client.release();
@@ -175,8 +173,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const getDetails = asyncHandler(async (req, res) => {
-  console.log(req.user);
-  res.status(200).json({ success: true, message: "details" });
+  res.status(200).json({ success: true, message: req.user });
 });
 export { registerUser, loginUser, getDetails };
 

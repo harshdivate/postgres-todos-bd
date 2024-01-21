@@ -5,6 +5,7 @@ import {
   getDetails,
   loginUser,
   registerUser,
+  logoutUser,
 } from "../controllers/user.controllers.js";
 
 const router = Router();
@@ -21,5 +22,6 @@ router.route("/register").post(
 
 router.route("/login").post(loginUser);
 router.route("/details").post(verifyJWT, getDetails);
+router.route("/logout").post(verifyJWT, logoutUser);
 
 export { router };

@@ -172,10 +172,64 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
+const logoutUser = asyncHandler(async (req, res) => {
+  //todos
+  // get the email check if it is not empty
+  // check if anyone with the email exists
+  // if not the send an response with clearing the cookies
+  // if the user exist then clear the accesstoken and refreshtoken
+  // send the response as true
+  const { email } = req.body;
+  console.log(email);
+
+  if (!email) {
+    return res
+      .status(404)
+      .clearCookie("accessToken")
+      .json({ message: "user not present" });
+  }
+  const client = await connectDB();
+  try {
+    if (!client) {
+      return res
+        .status(500)
+        .json({ status: false, messgae: "Issue in connecting to database" });
+    }
+
+    const query = `Select * from users where email='${email}'`;
+    const userExist = await client.query(query);
+
+    if (userExist.rows.length === 0) {
+      return res
+        .status(404)
+        .clearCookie("accessToken")
+        .json({ message: "User does not exist in db" });
+    }
+    const updateQuery = `Update users SET accesstoken='' , refreshtoken='' where email='${email}'`;
+    const deleteTokens = await client.query(updateQuery);
+
+    if (!deleteTokens) {
+      return res
+        .status(500)
+        .json({ status: false, message: "Issue in connecting to database" });
+    }
+
+    return res
+      .status(200)
+      .clearCookie("accessToken")
+      .json({ message: "logout successfully" });
+  } catch (error) {
+    return res.status(500).json({ message: error });
+  } finally {
+    client.release();
+  }
+});
+
 const getDetails = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: req.user });
 });
-export { registerUser, loginUser, getDetails };
+
+export { registerUser, loginUser, getDetails, logoutUser };
 
 // rows: [
 //   {

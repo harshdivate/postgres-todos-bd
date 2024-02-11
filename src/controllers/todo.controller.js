@@ -26,7 +26,7 @@ const getTodoById = asyncHandler(async (req, res) => {
       },
     });
     console.log(result.hits.hits);
-    return res.status(200).json({ status: true, message: result.hits.hits });
+    return res.status(200).json({ status: true, data: result.hits.hits });
   } catch (err) {
     console.log("Error" + err);
     client.close();
@@ -35,4 +35,40 @@ const getTodoById = asyncHandler(async (req, res) => {
   }
 });
 
-export { getTodoById };
+const insertTodo = asyncHandler(async (req, res) => {
+  console.log("inside insert todo");
+  const { title, description, userId, date } = req.body;
+
+  console.log(title, description, userId, date);
+
+  try {
+    if (!title || !description || !userId || !date) {
+      return res
+        .status(406)
+        .json({ status: false, message: "Data incomplete" });
+    }
+    const client = await configureElasticSearch();
+    //check if
+    const insertResult = await client.index({
+      index: "todo",
+      body: {
+        title: title,
+        description: description,
+        status: "false",
+        userId: userId,
+        date: date,
+        isFavourite: false,
+      },
+    });
+    console.log(insertResult);
+    await client.close();
+    return res
+      .status(200)
+      .json({ status: true, message: "Insert todo success" });
+  } catch (err) {
+    res.status(500).json({ status: false, message: "Internal server error" });
+    console.log("Error in inserting data " + err);
+  }
+});
+
+export { getTodoById, insertTodo };

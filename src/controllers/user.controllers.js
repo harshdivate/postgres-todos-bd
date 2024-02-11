@@ -146,7 +146,7 @@ const loginUser = asyncHandler(async (req, res) => {
     const { accessToken, refreshToken, accessTokenExpiry } =
       generateRefreshAccessToken(rows.username, rows.email, password);
 
-    const updateQuery = `Update users set accessToken='${accessToken}',refreshToken='${refreshToken}' where email='${email}' RETURNING username,email,accessToken `;
+    const updateQuery = `Update users set accessToken='${accessToken}',refreshToken='${refreshToken}' where email='${email}' RETURNING id,username,email,accessToken `;
     const updateResult = await client.query(updateQuery);
 
     if (updateResult.rows.length === 0) {
@@ -161,6 +161,7 @@ const loginUser = asyncHandler(async (req, res) => {
       // path: "http://localhost:5173/",
       expires: new Date(accessTokenExpiry * 1000),
     };
+    console.log(updateResult.rows);
     return res.status(200).cookie("accessToken", accessToken, options).json({
       status: true,
       message: "user logged in successfully",

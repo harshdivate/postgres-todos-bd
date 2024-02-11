@@ -1,0 +1,6 @@
+set the id in redux persist so that it can be passed addtodo request. //done
+work on the frontend of add todo // done
+in home.jsx fetch the gettodos api to get all the todo and display them in home page but for that id is needed;
+
+
+

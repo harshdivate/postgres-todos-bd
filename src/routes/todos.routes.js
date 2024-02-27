@@ -8,7 +8,7 @@ const router = Router();
 // router.route("todo/inserTodo").post(verifyJWT, insertTodo);
 
 //testing purpose removed verifyJWT
-router.route("/todos/:id").get(getTodoById);
+// router.route("/todos/:id").get(getTodoById);
 router.route("/inserttodo").post(insertTodo);
 
 export { router };

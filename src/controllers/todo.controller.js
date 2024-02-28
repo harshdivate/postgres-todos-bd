@@ -1,13 +1,13 @@
 import configureElasticSearch from "../config/elasticSearch-config.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
-const getTodoById = asyncHandler(async (req, res) => {
+const getTodoWithId = asyncHandler(async (req, res) => {
   // steps to follow
   // check weather id exsits or not
   // if not return there is no user present
   // if id exists then retrieve the todos and send response
-  const id = req.params.id;
-  console.log(id);
+  const id = req.body;
+  console.log("ID" + JSON.stringify(id));
   if (!id) {
     return res
       .status(400)
@@ -19,9 +19,13 @@ const getTodoById = asyncHandler(async (req, res) => {
     //
     const result = await client.search({
       index: "todo",
-      query: {
-        match: {
-          id: id,
+      body: {
+        query: {
+          term: {
+            id: {
+              value: id, // Assuming 'id' is the value you want to match
+            },
+          },
         },
       },
     });
@@ -60,17 +64,15 @@ const insertTodo = asyncHandler(async (req, res) => {
     });
     const { _id } = insertResult;
     await client.close();
-    return res
-      .status(200)
-      .json({
-        status: true,
-        data: { id: _id },
-        message: "Insert todo success",
-      });
+    return res.status(200).json({
+      status: true,
+      data: { id: _id },
+      message: "Insert todo success",
+    });
   } catch (err) {
     res.status(500).json({ status: false, message: "Internal server error" });
     console.log("Error in inserting data " + err);
   }
 });
 
-export { getTodoById, insertTodo };
+export { getTodoWithId, insertTodo };

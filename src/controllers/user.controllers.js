@@ -1,5 +1,5 @@
 import asyncHandler from "../utils/asyncHandler.js";
-import connectDB from "../config/db.js";
+import { connectDB } from "../config/db.js";
 import bcrypt from "bcrypt";
 import { uploadFiletoCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";

@@ -17,7 +17,17 @@ async function connectDB() {
   }
 }
 
-export default connectDB;
+async function releaseConnection(connection) {
+  try {
+    if (connection) {
+      connection.end();
+    }
+  } catch (error) {
+    console.log("Error  " + error);
+  }
+}
+
+export { connectDB, releaseConnection };
 
 // username,
 // fullName,

@@ -1,46 +1,30 @@
+import { connectDB, releaseConnection } from "../config/db.js";
 import configureElasticSearch from "../config/elasticSearch-config.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import { Sequelize, DataTypes } from "sequelize";
 
 const getTodoWithId = asyncHandler(async (req, res) => {
-  // steps to follow
-  // check weather id exsits or not
-  // if not return there is no user present
-  // if id exists then retrieve the todos and send response
-  const id = req.body;
-  console.log("ID" + JSON.stringify(id));
-  if (!id) {
-    return res
-      .status(400)
-      .json({ status: false, message: `user with id ${id} does not exist ` });
-  }
-
-  const client = await configureElasticSearch();
   try {
-    //
-    const result = await client.search({
-      index: "todo",
-      body: {
-        query: {
-          term: {
-            id: {
-              value: id, // Assuming 'id' is the value you want to match
-            },
-          },
-        },
-      },
-    });
-    console.log(result.hits.hits);
-    return res.status(200).json({ status: true, data: result.hits.hits });
+    const { id } = req.query;
+    if (!id) {
+      return res
+        .status(400)
+        .json({ status: false, message: `user with id ${id} does not exist ` });
+    }
+    const connection = await connectDB();
+    const query = `SELECT * FROM todo where userId=${id}`;
+    const result = await connection.query(query);
+    if (result.rows && result.rows.length > 0) {
+      return res.status(200).json({ status: true, data: result.rows });
+    } else {
+      return res.status(404).json({ message: "todo not found" });
+    }
   } catch (err) {
     console.log("Error" + err);
-    client.close();
-  } finally {
-    client.close();
   }
 });
 
 const insertTodo = asyncHandler(async (req, res) => {
-  console.log("inside insert todo");
   const { title, description, userId, date } = req.body;
 
   try {
@@ -49,30 +33,52 @@ const insertTodo = asyncHandler(async (req, res) => {
         .status(406)
         .json({ status: false, message: "Data incomplete" });
     }
-    const client = await configureElasticSearch();
+
+    const connection = await connectDB();
+    const checkIfRecordExistQuery = `SELECT * FROM todo WHERE userId=${userId} AND title='${title}'`;
+    const doesRecordExist = await connection.query(checkIfRecordExistQuery);
+    if (doesRecordExist.rows.length > 0) {
+      return res.status(403).json({
+        data: "Record Already Exists",
+      });
+    }
     // check if
-    const insertResult = await client.index({
-      index: "todo",
-      body: {
-        title: title,
-        description: description,
-        status: "false",
-        userId: userId,
-        date: date,
-        isFavourite: false,
-      },
-    });
-    const { _id } = insertResult;
-    await client.close();
-    return res.status(200).json({
-      status: true,
-      data: { id: _id },
-      message: "Insert todo success",
-    });
+    const insertQuery = `INSERT INTO todo (title,description,status,userId,date,isfavourite) VALUES ('${title}','${description}','false','${userId}','${date}','false')`;
+    const insertRecord = await connection.query(insertQuery);
+    await releaseConnection(connection);
+    if (insertRecord.rowCount >= 1) {
+      return res.status(200).json({
+        status: true,
+        data: { insertRecord },
+        message: "Insert todo success",
+      });
+    }
   } catch (err) {
     res.status(500).json({ status: false, message: "Internal server error" });
     console.log("Error in inserting data " + err);
   }
 });
 
-export { getTodoWithId, insertTodo };
+const deleteTodo = asyncHandler(async (req, res, next) => {
+  const { userId, todoId } = req.body;
+  if (!userId || !todoId) {
+    return res.status(404).json({ message: "Payload Data Not available" });
+  }
+  // check if todo exists
+  const checkIfTodoExistsQuery = `SELECT * FROM todo WHERE id='${todoId}' AND userid='${userId}'`;
+  const connection = await connectDB();
+  const result = await connection.query(checkIfTodoExistsQuery);
+  if (result.rows.length === 0) {
+    return res.status(404).json({ message: "Todo Does not exist" });
+  }
+  // todo exist delete here
+  const deleteQuery = `DELETE FROM todo WHERE id='${todoId}' AND userid='${userId}'`;
+  const isDeleted = await connection.query(deleteQuery);
+  await releaseConnection(connection);
+  if (isDeleted.rowCount >= 1) {
+    return res.status(200).json({ message: "Todo Sucessfully Deleted" });
+  } else {
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+export { getTodoWithId, insertTodo, deleteTodo };

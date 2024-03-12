@@ -30,7 +30,7 @@ export const verifyJWT = async (req, res, next) => {
       req.user = result.rows[0];
     }
     next();
-
+    //
     // if token exist the check wheather it is expired or not
     // if token is expired then send 401 to frontend and in frontend ask the user to re-login
     // if not expired then compare with the secret from our db

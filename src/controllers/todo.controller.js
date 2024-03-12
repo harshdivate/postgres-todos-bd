@@ -43,7 +43,7 @@ const insertTodo = asyncHandler(async (req, res) => {
       });
     }
     // check if
-    const insertQuery = `INSERT INTO todo (title,description,status,userId,date,isfavourite) VALUES ('${title}','${description}','false','${userId}','${date}','false')`;
+    const insertQuery = `INSERT INTO todo (title,description,status,userId,date,isfavourite) VALUES ('${title}','${description}','incomplete','${userId}','${date}','false')`;
     const insertRecord = await connection.query(insertQuery);
     await releaseConnection(connection);
     if (insertRecord.rowCount >= 1) {
@@ -60,6 +60,8 @@ const insertTodo = asyncHandler(async (req, res) => {
 });
 
 const deleteTodo = asyncHandler(async (req, res, next) => {
+  console.log("here");
+  console.log(userId, todoId);
   const { userId, todoId } = req.body;
   if (!userId || !todoId) {
     return res.status(404).json({ message: "Payload Data Not available" });
@@ -81,4 +83,25 @@ const deleteTodo = asyncHandler(async (req, res, next) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 });
-export { getTodoWithId, insertTodo, deleteTodo };
+
+const updateTodoStatus = asyncHandler(async (req, res, next) => {
+  const { option, todoId } = req.body;
+  if (!option || !todoId) {
+    return res.status(404).json({ "messahe ": "Invalid data" });
+  }
+  const connection = await connectDB();
+  const searchQuery = `SELECT * FROM todo WHERE id=${todoId}`;
+  const doesTodoExist = await connection.query(searchQuery);
+  if (doesTodoExist.rows.length === 0) {
+    return res.status(404).json({ "messahe ": "Invalid data" });
+  }
+  const updateQuery = `UPDATE todo SET status='${option}' WHERE id=${todoId}`;
+  const result = await connection.query(updateQuery);
+  if (result.rowCount >= 1) {
+    return res.status(200).json({ message: "Todo Sucessfully Deleted" });
+  } else {
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+export { getTodoWithId, insertTodo, deleteTodo, updateTodoStatus };
